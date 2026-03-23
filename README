@@ -35,10 +35,16 @@ Create a `.env` file in the project root and add:
 PORT=5000
 DB_HOST=localhost
 DB_USER=root
-DB_PASSWORD=your_mysql_password
+DB_PASSWORD=
 DB_NAME=event_planner_db
 JWT_SECRET=your_secret_key
+DOCKER_DB_HOST=host.docker.internal
 ```
+
+For XAMPP on Windows, keep `DB_HOST=localhost` when you run the API directly with `npm run dev`.
+If you run the API in Docker but keep MySQL in XAMPP on your machine, Docker Compose will use
+`DOCKER_DB_HOST=host.docker.internal` so the container can reach your host MySQL without exposing
+`JWT_SECRET` inside `docker-compose.yml`.
 
 ### 3. Create the database
 
@@ -68,6 +74,20 @@ The API runs by default on:
 
 ```text
 http://localhost:5000
+```
+
+## Docker
+
+To run only the API container and connect it to MySQL from XAMPP on your host machine:
+
+```bash
+docker compose up --build app
+```
+
+To run both the API and a MySQL container with an empty root password:
+
+```bash
+docker compose --profile docker-db up --build
 ```
 
 ## Authentication
