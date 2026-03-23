@@ -1,0 +1,313 @@
+# Event Planner API
+
+A REST API for managing users, events, invitations, and RSVP responses.
+
+This project is built with:
+- Node.js
+- Express
+- TypeScript
+- MySQL
+- JWT authentication
+
+## Features
+
+- User registration and login
+- Password hashing with `bcryptjs`
+- JWT-based authentication
+- Create, view, update, and delete events
+- Invite users to events
+- RSVP to invitations
+- Organizer-only authorization for event management and invitations
+
+## Project Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment variables
+
+Create a `.env` file in the project root and add:
+
+```env
+PORT=5000
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_mysql_password
+DB_NAME=event_planner_db
+JWT_SECRET=your_secret_key
+```
+
+### 3. Create the database
+
+Run the SQL in [schema.sql](c:\Users\dell\Desktop\Event-Planner-API\src\docs\schema.sql).
+
+This will create:
+- `users`
+- `events`
+- `invitations`
+
+### 4. Start the API
+
+For development:
+
+```bash
+npm run dev
+```
+
+For production build:
+
+```bash
+npm run build
+npm start
+```
+
+The API runs by default on:
+
+```text
+http://localhost:5000
+```
+
+## Authentication
+
+Protected endpoints require a bearer token:
+
+```http
+Authorization: Bearer <your_jwt_token>
+```
+
+Get a token by logging in through:
+
+```text
+POST /api/auth/login
+```
+
+## Validation Rules
+
+The API currently validates:
+- Email must be in a valid format
+- Password must be at least 6 characters
+- Event `startTime` must be before `endTime`
+- RSVP status must be one of `pending`, `accepted`, `declined`, or `maybe`
+
+## Authorization Rules
+
+- Only logged-in users can create events
+- Only the event organizer can update or delete an event
+- Only the event organizer can invite users to the event
+- Only the event organizer can view invitations for their event
+- Only the invited user can update their RSVP
+
+## API Endpoints
+
+### Health Check
+
+#### `GET /api/health`
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Event Planner API is running"
+}
+```
+
+### Auth
+
+#### `POST /api/auth/register`
+
+Request body:
+
+```json
+{
+  "fullName": "John Doe",
+  "email": "john@example.com",
+  "password": "secret123"
+}
+```
+
+Success response:
+
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "id": 1,
+    "fullName": "John Doe",
+    "email": "john@example.com"
+  }
+}
+```
+
+#### `POST /api/auth/login`
+
+Request body:
+
+```json
+{
+  "email": "john@example.com",
+  "password": "secret123"
+}
+```
+
+Success response:
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "your_jwt_token",
+    "user": {
+      "id": 1,
+      "fullName": "John Doe",
+      "email": "john@example.com"
+    }
+  }
+}
+```
+
+### Users
+
+#### `GET /api/users`
+
+Returns all users.
+
+#### `GET /api/users/:id`
+
+Returns one user by ID.
+
+### Events
+
+#### `POST /api/events`
+
+Requires authentication.
+
+Request body:
+
+```json
+{
+  "title": "Tech Meetup",
+  "description": "A meetup for developers",
+  "location": "Dar es Salaam",
+  "startTime": "2026-03-25T10:00:00.000Z",
+  "endTime": "2026-03-25T13:00:00.000Z"
+}
+```
+
+#### `GET /api/events`
+
+Returns all events.
+
+#### `GET /api/events/:id`
+
+Returns one event by ID.
+
+#### `PATCH /api/events/:id`
+
+Requires authentication and event organizer ownership.
+
+Request body example:
+
+```json
+{
+  "title": "Updated Meetup Title",
+  "description": "Updated description",
+  "location": "Arusha",
+  "startTime": "2026-03-25T11:00:00.000Z",
+  "endTime": "2026-03-25T14:00:00.000Z",
+  "status": "published"
+}
+```
+
+You can send only the fields you want to change. If updating time, send both `startTime` and `endTime`.
+
+#### `DELETE /api/events/:id`
+
+Requires authentication and event organizer ownership.
+
+Deletes the event.
+
+### Invitations
+
+#### `POST /api/events/:eventId/invitations`
+
+Requires authentication and organizer ownership of the event.
+
+Request body:
+
+```json
+{
+  "userId": 2
+}
+```
+
+#### `GET /api/events/:eventId/invitations`
+
+Requires authentication and organizer ownership of the event.
+
+Returns all invitations for the event, including invited user info.
+
+#### `PATCH /api/invitations/:invitationId/rsvp`
+
+Requires authentication. Only the invited user can update their RSVP.
+
+Request body:
+
+```json
+{
+  "status": "accepted"
+}
+```
+
+Valid RSVP values:
+
+```text
+pending
+accepted
+declined
+maybe
+```
+
+## Example Workflow
+
+1. Register a user with `POST /api/auth/register`
+2. Log in with `POST /api/auth/login`
+3. Copy the returned token
+4. Create an event with `POST /api/events`
+5. Invite another user with `POST /api/events/:eventId/invitations`
+6. Let the invited user log in and update RSVP with `PATCH /api/invitations/:invitationId/rsvp`
+
+## Common Error Responses
+
+Example error format:
+
+```json
+{
+  "success": false,
+  "message": "Only the event organizer can perform this action"
+}
+```
+
+Some possible messages:
+- `Authorization token is required`
+- `Invalid or expired authorization token`
+- `Email already exists`
+- `Invalid email or password`
+- `Event not found`
+- `Invitation not found`
+- `User has already been invited to this event`
+
+## Scripts
+
+```json
+{
+  "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+  "build": "tsc",
+  "start": "node dist/server.js"
+}
+```
