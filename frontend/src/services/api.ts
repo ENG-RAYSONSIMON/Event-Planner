@@ -1,5 +1,14 @@
+import {
+  CreateEventPayload,
+  Event,
+  EventInvitation,
+  Invitation,
+  LoginResponse,
+  UpdateEventPayload,
+  UpdateRsvpResponse,
+  User
+} from "../types";
 import { http, unwrap } from "./http";
-import { CreateEventPayload, Event, EventInvitation, Invitation, LoginResponse, User } from "../types";
 
 export const api = {
   register: (fullName: string, email: string, password: string) =>
@@ -10,8 +19,14 @@ export const api = {
 
   getEvents: () => http.get("/events").then(unwrap<Event[]>),
 
-  createEvent: (payload: CreateEventPayload) =>
-    http.post("/events", payload).then(unwrap<Event>),
+  getEventById: (eventId: number) => http.get(`/events/${eventId}`).then(unwrap<Event>),
+
+  createEvent: (payload: CreateEventPayload) => http.post("/events", payload).then(unwrap<Event>),
+
+  updateEvent: (eventId: number, payload: UpdateEventPayload) =>
+    http.patch(`/events/${eventId}`, payload).then(unwrap<Event>),
+
+  deleteEvent: (eventId: number) => http.delete(`/events/${eventId}`).then(unwrap<null>),
 
   getMyOrganizedEvents: () => http.get("/events/me/organized").then(unwrap<Event[]>),
 
@@ -26,5 +41,5 @@ export const api = {
     http.post(`/events/${eventId}/invitations`, { userId }).then(unwrap<Invitation>),
 
   updateRsvp: (invitationId: number, status: Invitation["rsvp_status"]) =>
-    http.patch(`/invitations/${invitationId}/rsvp`, { status }).then(unwrap<Invitation>)
+    http.patch(`/invitations/${invitationId}/rsvp`, { status }).then(unwrap<UpdateRsvpResponse>)
 };

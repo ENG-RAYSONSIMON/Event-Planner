@@ -39,6 +39,11 @@ export interface Invitation {
   invited_by: number;
   rsvp_status: "pending" | "accepted" | "declined" | "maybe";
   event_title: string;
+  event_description?: string | null;
+  event_location?: string | null;
+  event_start_time?: string;
+  event_end_time?: string;
+  event_status?: Event["status"];
 }
 
 export interface EventInvitation {
@@ -51,6 +56,11 @@ export interface EventInvitation {
   invited_user_email: string;
 }
 
+export interface UpdateRsvpResponse {
+  invitationId: number;
+  status: Invitation["rsvp_status"];
+}
+
 export interface CreateEventPayload {
   title: string;
   description?: string;
@@ -58,4 +68,13 @@ export interface CreateEventPayload {
   startTime: string;
   endTime: string;
   status?: "draft" | "published" | "cancelled";
+}
+
+export interface UpdateEventPayload {
+  title?: string;
+  description?: string;
+  location?: string;
+  startTime?: string;
+  endTime?: string;
+  status?: Event["status"];
 }

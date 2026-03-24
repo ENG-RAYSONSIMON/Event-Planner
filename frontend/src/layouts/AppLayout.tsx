@@ -21,7 +21,7 @@ export const AppLayout = () => {
             Event Planner
           </Link>
 
-          <nav className="flex items-center gap-3 text-sm">
+          <nav className="flex flex-wrap items-center gap-3 text-sm">
             <NavLink
               to="/"
               className={({ isActive }) =>
@@ -29,6 +29,14 @@ export const AppLayout = () => {
               }
             >
               Dashboard
+            </NavLink>
+            <NavLink
+              to="/events/my"
+              className={({ isActive }) =>
+                `rounded-full px-3 py-1 ${isActive ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-700"}`
+              }
+            >
+              My events
             </NavLink>
             <span className="flex items-center gap-1 text-slate-600">
               <FiUser />
