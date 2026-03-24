@@ -1,0 +1,42 @@
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+export interface User {
+  id: number;
+  full_name: string;
+  email: string;
+}
+
+export interface AuthUser {
+  id: number;
+  fullName: string;
+  email: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: AuthUser;
+}
+
+export interface Event {
+  id: number;
+  title: string;
+  description: string | null;
+  location: string | null;
+  start_time: string;
+  end_time: string;
+  status: "draft" | "published" | "cancelled";
+  organizer_id: number;
+}
+
+export interface Invitation {
+  id: number;
+  event_id: number;
+  user_id: number;
+  invited_by: number;
+  rsvp_status: "pending" | "accepted" | "declined" | "maybe";
+  event_title: string;
+}

@@ -19,6 +19,15 @@ interface EventInvitationRow extends InvitationRow {
     invited_user_email: string;
 }
 
+interface MyInvitationRow extends InvitationRow {
+    event_title: string;
+    event_description: string | null;
+    event_location: string | null;
+    event_start_time: Date;
+    event_end_time: Date;
+    event_status: string;
+}
+
 export const createInvitationService = async (
     eventId: number,
     body: CreateInvitationBody,
@@ -86,6 +95,28 @@ export const getEventInvitationsService = async (
          WHERE i.event_id = ?
          ORDER BY i.id DESC`,
         [eventId]
+    );
+
+    return invitations;
+};
+
+export const getMyInvitationsService = async (
+    userId: number
+): Promise<MyInvitationRow[]> => {
+    const [invitations] = await db.query<MyInvitationRow[]>(
+        `SELECT
+            i.*,
+            e.title AS event_title,
+            e.description AS event_description,
+            e.location AS event_location,
+            e.start_time AS event_start_time,
+            e.end_time AS event_end_time,
+            e.status AS event_status
+        FROM invitations i
+        INNER JOIN events e ON e.id = i.event_id
+        WHERE i.user_id = ?
+        ORDER BY i.id DESC`,
+        [userId]
     );
 
     return invitations;

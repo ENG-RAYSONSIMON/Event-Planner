@@ -3,7 +3,8 @@ import {
     createInvitationService,
     updateRsvpService,
     getEventInvitationsService,
-    getInvitationByIdService
+    getInvitationByIdService,
+    getMyInvitationsService
 } from "./invitation.service";
 import { CreateInvitationBody, RsvpBody } from "./invitation.types";
 import {
@@ -95,6 +96,28 @@ export const getEventInvitations = async (
         res.status(200).json({
             success: true,
             message: "Invitations fetched successfully",
+            data: invitations
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getMyInvitations = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new HttpError(401, "Authentication required");
+        }
+
+        const invitations = await getMyInvitationsService(req.user.userId);
+
+        res.status(200).json({
+            success: true,
+            message: "My invitations fetched successfully",
             data: invitations
         });
     } catch (error) {

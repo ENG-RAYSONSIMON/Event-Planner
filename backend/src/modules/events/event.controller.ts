@@ -5,7 +5,8 @@ import {
     getEventByIdService,
     updateEventService,
     deleteEventService,
-    ensureEventOrganizer
+    ensureEventOrganizer,
+    getMyOrganizedEventsService
 } from "./event.service";
 import { CreateEventBody, UpdateEventBody } from "./event.types";
 import {
@@ -51,6 +52,28 @@ export const getAllEvents = async (
         res.status(200).json({
             success: true,
             message: "Events fetched successfully",
+            data: events
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getMyOrganizedEvents = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new HttpError(401, "Authentication required");
+        }
+
+        const events = await getMyOrganizedEventsService(req.user.userId);
+
+        res.status(200).json({
+            success: true,
+            message: "My organized events fetched successfully",
             data: events
         });
     } catch (error) {
