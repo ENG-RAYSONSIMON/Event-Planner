@@ -40,3 +40,12 @@ export interface Invitation {
   rsvp_status: "pending" | "accepted" | "declined" | "maybe";
   event_title: string;
 }
+
+export interface CreateEventPayload {
+  title: string;
+  description?: string;
+  location?: string;
+  startTime: string;
+  endTime: string;
+  status?: "draft" | "published" | "cancelled";
+}
