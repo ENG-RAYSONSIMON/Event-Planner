@@ -48,7 +48,7 @@ If you run the API in Docker but keep MySQL in XAMPP on your machine, Docker Com
 
 ### 3. Create the database
 
-Run the SQL in [schema.sql](c:\Users\dell\Desktop\Event-Planner-API\src\docs\schema.sql).
+Run the SQL in [`src/docs/schema.sql`](./src/docs/schema.sql).
 
 This will create:
 - `users`
@@ -223,6 +223,12 @@ Request body:
 
 Returns all events.
 
+#### `GET /api/events/me/organized`
+
+Requires authentication.
+
+Returns events where the logged-in user is the organizer.
+
 #### `GET /api/events/:id`
 
 Returns one event by ID.
@@ -257,6 +263,12 @@ Deletes the event.
 #### `POST /api/events/:eventId/invitations`
 
 Requires authentication and organizer ownership of the event.
+
+#### `GET /api/invitations/me`
+
+Requires authentication.
+
+Returns invitations for the logged-in user including basic event details so a frontend can render an inbox/dashboard.
 
 Request body:
 

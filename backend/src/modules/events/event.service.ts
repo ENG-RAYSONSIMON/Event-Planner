@@ -49,6 +49,15 @@ export const getAllEventsService = async () => {
     return events;
 };
 
+export const getMyOrganizedEventsService = async (organizerId: number) => {
+    const [events] = await db.query<EventRow[]>(
+        "SELECT * FROM events WHERE organizer_id = ? ORDER BY id DESC",
+        [organizerId]
+    );
+
+    return events;
+};
+
 export const getEventByIdService = async (id: number) => {
     const [events] = await db.query<EventRow[]>(
         "SELECT * FROM events WHERE id = ?",
