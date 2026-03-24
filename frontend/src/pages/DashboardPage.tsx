@@ -1,9 +1,9 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { FiCalendar, FiMapPin, FiPlusCircle, FiSend } from "react-icons/fi";
+import { FormEvent, useEffect, useState } from "react";
+import { FiCalendar, FiMapPin, FiPlusCircle } from "react-icons/fi";
+import { Link } from "react-router-dom";
 import { api } from "../services/api";
 import { toErrorMessage } from "../services/http";
-import { useAuthStore } from "../store/authStore";
-import { Event, EventInvitation, Invitation, User } from "../types";
+import { Event, Invitation } from "../types";
 
 interface CreateEventFormState {
   title: string;
@@ -23,32 +23,18 @@ const initialEventForm: CreateEventFormState = {
 
 export const DashboardPage = () => {
   const [events, setEvents] = useState<Event[]>([]);
-  const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [eventForm, setEventForm] = useState<CreateEventFormState>(initialEventForm);
-  const [selectedEventId, setSelectedEventId] = useState<number | "">("");
-  const [selectedUserId, setSelectedUserId] = useState<number | "">("");
-  const [eventInvitations, setEventInvitations] = useState<EventInvitation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const currentUser = useAuthStore((state) => state.user);
+  const [activeInvitationId, setActiveInvitationId] = useState<number | null>(null);
 
-  // Load dashboard data once the user reaches this page.
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [publicEvents, organizedEvents, myInvitations, allUsers] = await Promise.all([
-          api.getEvents(),
-          api.getMyOrganizedEvents(),
-          api.getMyInvitations(),
-          api.getUsers()
-        ]);
-
+        const [publicEvents, myInvitations] = await Promise.all([api.getEvents(), api.getMyInvitations()]);
         setEvents(publicEvents);
-        setMyEvents(organizedEvents);
         setInvitations(myInvitations);
-        setUsers(allUsers);
       } catch (loadError) {
         setError(toErrorMessage(loadError));
       }
@@ -56,32 +42,6 @@ export const DashboardPage = () => {
 
     void loadData();
   }, []);
-
-  useEffect(() => {
-    if (!selectedEventId) {
-      setEventInvitations([]);
-      return;
-    }
-
-    const loadEventInvitations = async () => {
-      try {
-        const data = await api.getEventInvitations(selectedEventId);
-        setEventInvitations(data);
-      } catch (loadError) {
-        setError(toErrorMessage(loadError));
-      }
-    };
-
-    void loadEventInvitations();
-  }, [selectedEventId]);
-
-  const inviteCandidates = useMemo(() => {
-    const invitedUserIds = new Set(eventInvitations.map((invitation) => invitation.user_id));
-
-    return users.filter(
-      (user) => user.id !== currentUser?.id && !invitedUserIds.has(user.id)
-    );
-  }, [currentUser?.id, eventInvitations, users]);
 
   const handleCreateEvent = async (event: FormEvent) => {
     event.preventDefault();
@@ -104,7 +64,6 @@ export const DashboardPage = () => {
       });
 
       setEvents((prev) => [created, ...prev]);
-      setMyEvents((prev) => [created, ...prev]);
       setEventForm(initialEventForm);
     } catch (saveError) {
       setError(toErrorMessage(saveError));
@@ -113,32 +72,25 @@ export const DashboardPage = () => {
     }
   };
 
-  const handleInvite = async (event: FormEvent) => {
-    event.preventDefault();
-
-    if (!selectedEventId || !selectedUserId) {
-      setError("Select an event and a user to invite.");
-      return;
-    }
-
-    try {
-      setError(null);
-      await api.inviteUser(selectedEventId, selectedUserId);
-      const refreshedInvitations = await api.getEventInvitations(selectedEventId);
-      setEventInvitations(refreshedInvitations);
-      setSelectedUserId("");
-    } catch (inviteError) {
-      setError(toErrorMessage(inviteError));
-    }
-  };
-
   const handleRsvp = async (invitationId: number, status: Invitation["rsvp_status"]) => {
     try {
       setError(null);
+      setActiveInvitationId(invitationId);
       const updated = await api.updateRsvp(invitationId, status);
-      setInvitations((prev) => prev.map((inv) => (inv.id === invitationId ? { ...inv, ...updated } : inv)));
+      setInvitations((prev) =>
+        prev.map((inv) =>
+          inv.id === invitationId
+            ? {
+                ...inv,
+                rsvp_status: updated.status
+              }
+            : inv
+        )
+      );
     } catch (rsvpError) {
       setError(toErrorMessage(rsvpError));
+    } finally {
+      setActiveInvitationId(null);
     }
   };
 
@@ -210,73 +162,33 @@ export const DashboardPage = () => {
       </section>
 
       <section className="rounded-2xl bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-lg font-semibold">My Invitations ({invitations.length})</h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">My Invitations ({invitations.length})</h2>
+          <Link to="/events/my" className="text-sm font-medium text-brand-700">
+            Manage my events
+          </Link>
+        </div>
         <div className="space-y-2">
           {invitations.map((invitation) => (
             <article key={invitation.id} className="rounded-xl border border-slate-200 p-3 text-sm">
               <p className="font-medium">{invitation.event_title}</p>
               <p className="text-xs text-slate-500">Current RSVP: {invitation.rsvp_status}</p>
               <div className="mt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleRsvp(invitation.id, "accepted")}
-                  className="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700"
-                >
-                  Accept
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRsvp(invitation.id, "declined")}
-                  className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700"
-                >
-                  Decline
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRsvp(invitation.id, "maybe")}
-                  className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-700"
-                >
-                  Maybe
-                </button>
+                {(["accepted", "declined", "maybe"] as Invitation["rsvp_status"][]).map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    disabled={activeInvitationId === invitation.id}
+                    onClick={() => handleRsvp(invitation.id, status)}
+                    className="rounded-full bg-slate-100 px-2 py-1 text-xs capitalize text-slate-700"
+                  >
+                    {status}
+                  </button>
+                ))}
               </div>
             </article>
           ))}
         </div>
-      </section>
-
-      <section className="rounded-2xl bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-lg font-semibold">Invite users</h2>
-        <form className="space-y-3" onSubmit={handleInvite}>
-          <select
-            className="w-full rounded-xl border border-slate-300 px-3 py-2"
-            value={selectedEventId}
-            onChange={(event) => setSelectedEventId(Number(event.target.value) || "")}
-          >
-            <option value="">Select my event</option>
-            {myEvents.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.title}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="w-full rounded-xl border border-slate-300 px-3 py-2"
-            value={selectedUserId}
-            onChange={(event) => setSelectedUserId(Number(event.target.value) || "")}
-          >
-            <option value="">Select user</option>
-            {inviteCandidates.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.full_name} ({user.email})
-              </option>
-            ))}
-          </select>
-
-          <button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-slate-800 px-3 py-2 text-white">
-            <FiSend /> Send invitation
-          </button>
-        </form>
       </section>
 
       {error ? <p className="lg:col-span-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
