@@ -1,5 +1,5 @@
 import { http, unwrap } from "./http";
-import { CreateEventPayload, Event, Invitation, LoginResponse, User } from "../types";
+import { CreateEventPayload, Event, EventInvitation, Invitation, LoginResponse, User } from "../types";
 
 export const api = {
   register: (fullName: string, email: string, password: string) =>
@@ -16,6 +16,9 @@ export const api = {
   getMyOrganizedEvents: () => http.get("/events/me/organized").then(unwrap<Event[]>),
 
   getMyInvitations: () => http.get("/invitations/me").then(unwrap<Invitation[]>),
+
+  getEventInvitations: (eventId: number) =>
+    http.get(`/events/${eventId}/invitations`).then(unwrap<EventInvitation[]>),
 
   getUsers: () => http.get("/users").then(unwrap<User[]>),
 

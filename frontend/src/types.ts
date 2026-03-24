@@ -41,6 +41,16 @@ export interface Invitation {
   event_title: string;
 }
 
+export interface EventInvitation {
+  id: number;
+  event_id: number;
+  user_id: number;
+  invited_by: number;
+  rsvp_status: "pending" | "accepted" | "declined" | "maybe";
+  invited_user_name: string;
+  invited_user_email: string;
+}
+
 export interface CreateEventPayload {
   title: string;
   description?: string;
