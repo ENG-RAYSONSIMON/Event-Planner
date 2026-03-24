@@ -2,7 +2,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { FiCalendar, FiMapPin, FiPlusCircle, FiSend } from "react-icons/fi";
 import { api } from "../services/api";
 import { toErrorMessage } from "../services/http";
-import { Event, Invitation, User } from "../types";
+import { useAuthStore } from "../store/authStore";
+import { Event, EventInvitation, Invitation, User } from "../types";
 
 interface CreateEventFormState {
   title: string;
@@ -28,8 +29,10 @@ export const DashboardPage = () => {
   const [eventForm, setEventForm] = useState<CreateEventFormState>(initialEventForm);
   const [selectedEventId, setSelectedEventId] = useState<number | "">("");
   const [selectedUserId, setSelectedUserId] = useState<number | "">("");
+  const [eventInvitations, setEventInvitations] = useState<EventInvitation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const currentUser = useAuthStore((state) => state.user);
 
   // Load dashboard data once the user reaches this page.
   useEffect(() => {
@@ -54,10 +57,31 @@ export const DashboardPage = () => {
     void loadData();
   }, []);
 
-  const inviteCandidates = useMemo(
-    () => users.filter((user) => !invitations.some((inv) => inv.user_id === user.id)),
-    [users, invitations]
-  );
+  useEffect(() => {
+    if (!selectedEventId) {
+      setEventInvitations([]);
+      return;
+    }
+
+    const loadEventInvitations = async () => {
+      try {
+        const data = await api.getEventInvitations(selectedEventId);
+        setEventInvitations(data);
+      } catch (loadError) {
+        setError(toErrorMessage(loadError));
+      }
+    };
+
+    void loadEventInvitations();
+  }, [selectedEventId]);
+
+  const inviteCandidates = useMemo(() => {
+    const invitedUserIds = new Set(eventInvitations.map((invitation) => invitation.user_id));
+
+    return users.filter(
+      (user) => user.id !== currentUser?.id && !invitedUserIds.has(user.id)
+    );
+  }, [currentUser?.id, eventInvitations, users]);
 
   const handleCreateEvent = async (event: FormEvent) => {
     event.preventDefault();
@@ -100,6 +124,8 @@ export const DashboardPage = () => {
     try {
       setError(null);
       await api.inviteUser(selectedEventId, selectedUserId);
+      const refreshedInvitations = await api.getEventInvitations(selectedEventId);
+      setEventInvitations(refreshedInvitations);
       setSelectedUserId("");
     } catch (inviteError) {
       setError(toErrorMessage(inviteError));
