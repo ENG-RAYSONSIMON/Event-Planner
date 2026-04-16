@@ -1,9 +1,8 @@
 import { db } from "../../config/db";
-import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { CreateInvitationBody, RsvpBody } from "./invitation.types";
 import { HttpError } from "../../shared/utils/httpError";
 
-interface InvitationRow extends RowDataPacket {
+interface InvitationRow {
     id: number;
     event_id: number;
     user_id: number;
@@ -33,23 +32,24 @@ export const createInvitationService = async (
     body: CreateInvitationBody,
     invitedBy: number
 ) => {
-    const [existingInvitations] = await db.query<InvitationRow[]>(
-        "SELECT id FROM invitations WHERE event_id = ? AND user_id = ?",
+    const existingInvitationsResult = await db.query<InvitationRow>(
+        "SELECT id FROM invitations WHERE event_id = $1 AND user_id = $2",
         [eventId, body.userId]
     );
 
-    if (existingInvitations.length > 0) {
+    if (existingInvitationsResult.rows.length > 0) {
         throw new HttpError(409, "User has already been invited to this event");
     }
 
-    const [result] = await db.execute<ResultSetHeader>(
+    const result = await db.query<{ id: number }>(
         `INSERT INTO invitations (event_id, user_id, invited_by)
-     VALUES (?, ?, ?)`,
+     VALUES ($1, $2, $3)
+     RETURNING id`,
         [eventId, body.userId, invitedBy]
     );
 
     return {
-        id: result.insertId,
+        id: result.rows[0].id,
         eventId,
         userId: body.userId,
         invitedBy,
@@ -61,10 +61,10 @@ export const updateRsvpService = async (
     invitationId: number,
     body: RsvpBody
 ) => {
-    await db.execute(
+    await db.query(
         `UPDATE invitations
-     SET rsvp_status = ?, responded_at = NOW()
-     WHERE id = ?`,
+     SET rsvp_status = $1, responded_at = NOW()
+     WHERE id = $2`,
         [body.status, invitationId]
     );
 
@@ -77,33 +77,33 @@ export const updateRsvpService = async (
 export const getInvitationByIdService = async (
     invitationId: number
 ): Promise<InvitationRow | null> => {
-    const [invitations] = await db.query<InvitationRow[]>(
-        "SELECT * FROM invitations WHERE id = ?",
+    const invitationsResult = await db.query<InvitationRow>(
+        "SELECT * FROM invitations WHERE id = $1",
         [invitationId]
     );
 
-    return invitations[0] || null;
+    return invitationsResult.rows[0] || null;
 };
 
 export const getEventInvitationsService = async (
     eventId: number
 ): Promise<EventInvitationRow[]> => {
-    const [invitations] = await db.query<EventInvitationRow[]>(
+    const invitationsResult = await db.query<EventInvitationRow>(
         `SELECT i.*, u.full_name AS invited_user_name, u.email AS invited_user_email
          FROM invitations i
          INNER JOIN users u ON u.id = i.user_id
-         WHERE i.event_id = ?
+         WHERE i.event_id = $1
          ORDER BY i.id DESC`,
         [eventId]
     );
 
-    return invitations;
+    return invitationsResult.rows;
 };
 
 export const getMyInvitationsService = async (
     userId: number
 ): Promise<MyInvitationRow[]> => {
-    const [invitations] = await db.query<MyInvitationRow[]>(
+    const invitationsResult = await db.query<MyInvitationRow>(
         `SELECT
             i.*,
             e.title AS event_title,
@@ -114,10 +114,10 @@ export const getMyInvitationsService = async (
             e.status AS event_status
         FROM invitations i
         INNER JOIN events e ON e.id = i.event_id
-        WHERE i.user_id = ?
+        WHERE i.user_id = $1
         ORDER BY i.id DESC`,
         [userId]
     );
 
-    return invitations;
+    return invitationsResult.rows;
 };

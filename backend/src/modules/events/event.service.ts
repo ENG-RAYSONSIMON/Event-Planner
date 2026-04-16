@@ -1,10 +1,9 @@
 import { db } from "../../config/db";
-import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { CreateEventBody } from "./event.types";
 import { EventStatus, UpdateEventBody } from "./event.types";
 import { HttpError } from "../../shared/utils/httpError";
 
-interface EventRow extends RowDataPacket {
+interface EventRow {
     id: number;
     title: string;
     description: string | null;
@@ -23,15 +22,16 @@ export const createEventService = async (
 ) => {
     const { title, description, location, startTime, endTime } = body;
 
-    const [result] = await db.execute<ResultSetHeader>(
+    const result = await db.query<{ id: number }>(
         `INSERT INTO events
     (title, description, location, start_time, end_time, organizer_id)
-    VALUES (?, ?, ?, ?, ?, ?)`,
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id`,
         [title, description || null, location || null, startTime, endTime, organizerId]
     );
 
     return {
-        id: result.insertId,
+        id: result.rows[0].id,
         title,
         description: description || null,
         location: location || null,
@@ -42,29 +42,29 @@ export const createEventService = async (
 };
 
 export const getAllEventsService = async () => {
-    const [events] = await db.query<EventRow[]>(
+    const eventsResult = await db.query<EventRow>(
         "SELECT * FROM events ORDER BY id DESC"
     );
 
-    return events;
+    return eventsResult.rows;
 };
 
 export const getMyOrganizedEventsService = async (organizerId: number) => {
-    const [events] = await db.query<EventRow[]>(
-        "SELECT * FROM events WHERE organizer_id = ? ORDER BY id DESC",
+    const eventsResult = await db.query<EventRow>(
+        "SELECT * FROM events WHERE organizer_id = $1 ORDER BY id DESC",
         [organizerId]
     );
 
-    return events;
+    return eventsResult.rows;
 };
 
 export const getEventByIdService = async (id: number) => {
-    const [events] = await db.query<EventRow[]>(
-        "SELECT * FROM events WHERE id = ?",
+    const eventsResult = await db.query<EventRow>(
+        "SELECT * FROM events WHERE id = $1",
         [id]
     );
 
-    return events[0] || null;
+    return eventsResult.rows[0] || null;
 };
 
 export const ensureEventOrganizer = async (
@@ -109,10 +109,10 @@ export const updateEventService = async (
         status: body.status ?? currentEvent.status
     };
 
-    await db.execute(
+    await db.query(
         `UPDATE events
-         SET title = ?, description = ?, location = ?, start_time = ?, end_time = ?, status = ?
-         WHERE id = ?`,
+         SET title = $1, description = $2, location = $3, start_time = $4, end_time = $5, status = $6
+         WHERE id = $7`,
         [
             updatedEvent.title,
             updatedEvent.description,
@@ -128,12 +128,12 @@ export const updateEventService = async (
 };
 
 export const deleteEventService = async (eventId: number): Promise<void> => {
-    const [result] = await db.execute<ResultSetHeader>(
-        "DELETE FROM events WHERE id = ?",
+    const result = await db.query(
+        "DELETE FROM events WHERE id = $1",
         [eventId]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
         throw new HttpError(404, "Event not found");
     }
 };

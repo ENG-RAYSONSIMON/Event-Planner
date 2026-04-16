@@ -12,27 +12,29 @@ services:
       - .env
     environment:
       DB_HOST: ${DOCKER_DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-5432}
     networks:
       - event-planner-network
 
-  mysql:
-    image: mysql:8
+  postgres:
+    image: postgres:16
     profiles:
       - docker-db
     environment:
-      MYSQL_DATABASE: ${DB_NAME:-event_planner_db}
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-      MYSQL_ROOT_HOST: "%"
+      POSTGRES_DB: ${DB_NAME:-event_planner}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
       - ./src/docs/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
       - event-planner-network
 
 volumes:
-  mysql_data:
+  postgres_data:
 
 networks:
   event-planner-network:
